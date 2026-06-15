@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 
 export default function HomePage() {
   const [copied, setCopied] = useState<'iframe' | 'script' | null>(null)
@@ -42,14 +43,14 @@ export default function HomePage() {
       <header className="border-b" style={{ borderColor: 'var(--border)' }}>
         <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </div>
               <span className="font-semibold text-sm">友链审核</span>
-            </a>
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={toggleDark} className="text-sm p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" style={{ color: 'var(--text-muted)' }}>

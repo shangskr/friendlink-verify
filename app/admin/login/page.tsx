@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -39,9 +40,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-6" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <a href="/" className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white text-sm font-bold mb-4 hover:opacity-80 transition-opacity">
+          <Link href="/" className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 text-white text-sm font-bold mb-4 hover:opacity-80 transition-opacity">
             FV
-          </a>
+          </Link>
           <h1 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>管理员登录</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>登录以管理友链提交</p>
         </div>

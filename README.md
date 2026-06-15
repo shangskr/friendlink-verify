@@ -200,6 +200,20 @@ GET /api/submissions?page=1&limit=10
 
 返回 `{ submissions, total, page, totalPages }`，需要管理员登录。
 
+### 公开查询提交列表（无需登录）
+
+```
+GET /api/submissions?public=1
+```
+
+| 参数 | 说明 |
+|------|------|
+| `public` | **必填**，设为 `1` 启用公开查询 |
+| `status` | 筛选状态，可选 `pending` / `approved` / `rejected` |
+| `search` | 按站点名称模糊搜索（不区分大小写） |
+
+返回 `{ submissions: [...] }`，每项仅含 `name`、`description`、`status`、`type` 四个字段。响应带有 `Access-Control-Allow-Origin: *` CORS 头，支持跨域调用。
+
 ### 后台设置
 
 ```
@@ -291,10 +305,12 @@ document.getElementById('fl-f').addEventListener('submit', function(e) {
     --fl-err-bg: #fef2f2;
     --fl-err-border: #fecaca;
     --fl-err-text: #dc2626;
-    --fl-btn-bg: #363636;
-    --fl-btn-hover: #555;
+    --fl-btn-bg: #49b1f5;
+    --fl-btn-hover: #3d9ce0;
     --fl-btn-disabled: #bbb;
     --fl-success-h3: #363636;
+    --fl-option-btn-border: #49b1f5;
+    --fl-option-btn-active-bg: #49b1f5;
     backdrop-filter: blur(5px) saturate(150%);
 }
 
@@ -310,105 +326,572 @@ document.getElementById('fl-f').addEventListener('submit', function(e) {
     --fl-err-bg: rgba(100, 30, 30, 0.3);
     --fl-err-border: rgb(120, 30, 30);
     --fl-err-text: #ffa0a0;
-    --fl-btn-bg: #65b0ff;
-    --fl-btn-hover: #4a9fe8;
+    --fl-btn-bg: #49b1f5;
+    --fl-btn-hover: #3d9ce0;
     --fl-btn-disabled: #555;
     --fl-success-h3: #eee;
+    --fl-checkbox: #49b1f5;
+    --fl-option-btn-border: #49b1f5;
+    --fl-option-btn-active-bg: #49b1f5;
 }
 
 #fl-wrap label {
-    display: flex; align-items: center; gap: 8px;
-    cursor: pointer; font-size: 14px; padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 0;
     color: var(--fl-text);
 }
 
 #fl-wrap input[type="checkbox"] {
-    width: 16px; height: 16px;
-    accent-color: #65b0ff; cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--fl-checkbox, #49b1f5);
+    cursor: pointer;
 }
 
-#fl-wrap .fl-hint { font-size: 13px; color: var(--fl-text-muted); }
-#fl-wrap .fl-hint.fl-sm { margin: -10px 0 14px; font-size: 11px; }
+#fl-wrap .fl-hint {
+    font-size: 13px;
+    color: var(--fl-text-muted);
+}
+
+#fl-wrap .fl-hint.fl-sm {
+    margin: -10px 0 14px;
+    font-size: 11px;
+}
+
+#fl-wrap .fl-condition-hint {
+    margin-top: 10px;
+    color: #ef4444;
+}
 
 #fl-wrap .fl-form {
-    display: none; margin-top: 12px; padding: 20px;
+    display: none;
+    margin-top: 12px;
+    padding: 20px;
     background: var(--fl-bg);
     backdrop-filter: blur(5px) saturate(150%);
-    border: var(--fl-border); border-radius: 12px;
+    border: var(--fl-border);
+    border-radius: 12px;
 }
 
-#fl-wrap .fl-field { margin-bottom: 14px; }
+#fl-wrap .fl-field {
+    margin-bottom: 14px;
+}
 
 #fl-wrap .fl-label {
-    display: block; font-size: 13px; font-weight: 500;
-    color: var(--fl-text); margin-bottom: 4px;
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fl-text);
+    margin-bottom: 4px;
 }
 
-#fl-wrap .fl-star { color: #ef4444; }
+#fl-wrap .fl-star {
+    color: #ef4444;
+}
 
 #fl-wrap .fl-input {
-    width: 100%; padding: 8px 10px; font-size: 14px;
-    border: 1px solid var(--fl-input-border); border-radius: 6px;
-    outline: none; box-sizing: border-box;
-    color: var(--fl-input-text); background: var(--fl-input-bg);
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid var(--fl-input-border);
+    border-radius: 6px;
+    outline: none;
+    box-sizing: border-box;
+    color: var(--fl-input-text);
+    background: var(--fl-input-bg);
 }
 
 #fl-wrap .fl-input:focus {
-    border-color: #65b0ff;
-    box-shadow: 0 0 0 2px rgba(101, 176, 255, .2);
+    border-color: #49b1f5;
+    box-shadow: 0 0 0 2px rgba(73, 177, 245, .2);
 }
 
 #fl-wrap .fl-err {
-    display: none; padding: 8px 12px;
-    background: var(--fl-err-bg); border: 1px solid var(--fl-err-border);
-    border-radius: 6px; color: var(--fl-err-text);
-    font-size: 13px; margin-bottom: 14px;
+    display: none;
+    padding: 8px 12px;
+    background: var(--fl-err-bg);
+    border: 1px solid var(--fl-err-border);
+    border-radius: 6px;
+    color: var(--fl-err-text);
+    font-size: 13px;
+    margin-bottom: 14px;
 }
 
 #fl-wrap .fl-btn {
-    width: 100%; padding: 9px 16px; font-size: 14px;
-    font-weight: 500; color: #fff; background: var(--fl-btn-bg);
-    border: none; border-radius: 6px; cursor: pointer;
+    width: 100%;
+    padding: 9px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    background: var(--fl-btn-bg);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
 }
 
-#fl-wrap .fl-btn:hover { background: var(--fl-btn-hover); }
-#fl-wrap .fl-btn:disabled { background: var(--fl-btn-disabled); cursor: not-allowed; }
+#fl-wrap .fl-btn:hover {
+    background: var(--fl-btn-hover);
+}
 
-#fl-wrap .fl-success { text-align: center; padding: 48px 24px; }
+#fl-wrap .fl-btn:disabled {
+    background: var(--fl-btn-disabled);
+    cursor: not-allowed;
+}
+
+#fl-wrap .fl-success {
+    text-align: center;
+    padding: 48px 24px;
+}
 
 #fl-wrap .fl-success h3 {
-    margin: 0 0 4px; font-size: 16px;
-    font-weight: 600; color: var(--fl-success-h3);
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--fl-success-h3);
 }
 
 #fl-wrap .fl-success p {
-    margin: 0; font-size: 14px;
-    color: var(--fl-text-secondary); line-height: 1.5;
+    margin: 0;
+    font-size: 14px;
+    color: var(--fl-text-secondary);
+    line-height: 1.5;
 }
 
 #fl-wrap>h3 {
-    margin: 0 0 4px; font-size: 15px;
-    font-weight: 600; color: var(--fl-text);
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fl-text);
 }
 
 #fl-wrap>p {
-    margin: 0 0 8px; font-size: 13px;
+    margin: 0 0 8px;
+    font-size: 13px;
     color: var(--fl-text-secondary);
 }
 
 #fl-wrap .fl-form h3 {
-    margin: 0 0 12px; font-size: 15px;
-    font-weight: 600; color: var(--fl-text);
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fl-text);
+}
+
+#fl-wrap .fl-option-btns {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0;
+}
+
+#fl-wrap .fl-option-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 2px solid var(--fl-input-border);
+    border-radius: 8px;
+    background: var(--fl-input-bg);
+    color: var(--fl-text);
+    cursor: pointer;
+    transition: all .2s;
+}
+
+#fl-wrap .fl-option-btn:hover {
+    border-color: var(--fl-option-btn-border);
+    color: var(--fl-option-btn-border);
+}
+
+#fl-wrap .fl-option-btn.active {
+    border-color: var(--fl-option-btn-active-bg);
+    background: var(--fl-option-btn-active-bg);
+    color: #fff;
 }
 
 #fl-wrap .fl-update-divider {
     border-top: 1px solid var(--fl-border);
-    margin: 16px 0; padding-top: 16px;
+    margin: 16px 0;
+    padding-top: 16px;
 }
 
-#fl-wrap .fl-update-divider p {
-    margin: 0 0 12px; font-size: 13px;
-    color: var(--fl-text-secondary); font-weight: 500;
+
+/* ===== 友链申请状态列表 ===== */
+#fl-status-section {
+    margin-top: 32px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(5px) saturate(150%);
+    border: 1px solid rgb(169, 169, 169);
+    border-radius: 12px;
+    --fl-text: #363636;
+    --fl-text-secondary: #666;
+    --fl-text-muted: #999;
+    --fl-input-border: #d1d5db;
+    --fl-input-bg: #fff;
+    --fl-input-text: #363636;
+    --fl-option-btn-border: #49b1f5;
+    --fl-option-btn-active-bg: #49b1f5;
+}
+
+[data-theme='dark'] #fl-status-section {
+    background: rgba(25, 25, 25, 0.88);
+    border-color: rgb(80, 80, 80);
+    --fl-text: #c0c0c0;
+    --fl-text-secondary: #aaa;
+    --fl-text-muted: #999;
+    --fl-input-border: rgb(80, 80, 80);
+    --fl-input-bg: rgb(42, 42, 42);
+    --fl-input-text: #eee;
+    --fl-option-btn-border: #49b1f5;
+    --fl-option-btn-active-bg: #49b1f5;
+}
+
+#fl-status-section .fl-status-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+#fl-status-section .fl-status-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--fl-text);
+    margin: 0;
+    white-space: nowrap;
+}
+
+#fl-status-section .fl-status-title-count {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--fl-text-muted);
+    margin-left: 4px;
+}
+
+#fl-status-section .fl-status-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+#fl-status-section .fl-status-dropdown {
+    position: relative;
+    display: inline-block;
+    flex: 1;
+    min-width: 0;
+}
+
+#fl-status-section .fl-status-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 14px;
+    font-size: 12px;
+    border: 1px solid var(--fl-input-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fl-text-secondary);
+    cursor: pointer;
+    transition: all .2s;
+    width: 100%;
+}
+
+#fl-status-section .fl-status-dropdown-trigger:hover {
+    border-color: var(--fl-option-btn-border);
+    color: var(--fl-option-btn-border);
+}
+
+#fl-status-section .fl-status-dropdown-arrow {
+    font-size: 10px;
+    transition: transform .2s;
+}
+
+#fl-status-section .fl-status-dropdown.open .fl-status-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+#fl-status-section .fl-status-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 110px;
+    background: var(--fl-input-bg);
+    border: 1px solid var(--fl-input-border);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    display: none;
+    z-index: 100;
+    overflow: hidden;
+}
+
+[data-theme='dark'] #fl-status-section .fl-status-dropdown-menu {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+#fl-status-section .fl-status-dropdown.open .fl-status-dropdown-menu {
+    display: block;
+}
+
+#fl-status-section .fl-status-dropdown-item {
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--fl-text-secondary);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+}
+
+#fl-status-section .fl-status-dropdown-item:hover {
+    background: rgba(73, 177, 245, 0.1);
+    color: var(--fl-option-btn-border);
+}
+
+#fl-status-section .fl-status-dropdown-item.active {
+    color: var(--fl-option-btn-border);
+    font-weight: 500;
+    background: rgba(73, 177, 245, 0.08);
+}
+
+#fl-status-search {
+    padding: 5px 12px 5px 28px;
+    font-size: 12px;
+    border: 1px solid var(--fl-input-border);
+    border-radius: 6px;
+    outline: none;
+    background: var(--fl-input-bg);
+    color: var(--fl-input-text);
+    width: 100%;
+    transition: all .2s;
+}
+
+#fl-status-search:focus {
+    border-color: var(--fl-option-btn-border);
+}
+
+#fl-status-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+#fl-status-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--fl-text-muted);
+    pointer-events: none;
+    line-height: 1;
+}
+
+#fl-status-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+#fl-status-grid .fl-status-empty,
+#fl-status-grid .fl-status-loading,
+#fl-status-grid .fl-status-error {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--fl-text-muted);
+    font-size: 14px;
+}
+
+#fl-status-grid .fl-status-error {
+    color: var(--fl-err-text);
+}
+
+#fl-status-grid .fl-status-item {
+    padding: 14px;
+    border: 1.5px solid #b0b0b0;
+    border-radius: 10px;
+    background: var(--fl-input-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    padding-top: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: all .2s;
+}
+
+#fl-status-grid .fl-status-item:hover {
+    border-color: var(--fl-option-btn-border);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] #fl-status-grid .fl-status-item {
+    border-color: #555;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='dark'] #fl-status-grid .fl-status-item:hover {
+    border-color: var(--fl-option-btn-border);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+#fl-status-grid .fl-status-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--fl-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 120px;
+}
+
+#fl-status-grid .fl-status-desc {
+    font-size: 12px;
+    color: var(--fl-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+#fl-status-grid .fl-status-top-right {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#fl-status-grid .fl-status-badge {
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 12px;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+#fl-status-grid .fl-status-type {
+    font-size: 10px;
+    color: var(--fl-text-muted);
+    padding: 2px 6px;
+    background: var(--fl-input-bg);
+    border: 1px solid var(--fl-input-border);
+    border-radius: 4px;
+    line-height: 1.5;
+}
+
+#fl-status-grid .fl-status-badge.pending {
+    background: #fef9c3;
+    color: #a16207;
+}
+
+#fl-status-grid .fl-status-badge.approved {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+#fl-status-grid .fl-status-badge.rejected {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+[data-theme='dark'] #fl-status-grid .fl-status-badge.pending {
+    background: rgba(234, 179, 8, 0.2);
+    color: #facc15;
+}
+
+[data-theme='dark'] #fl-status-grid .fl-status-badge.approved {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+
+[data-theme='dark'] #fl-status-grid .fl-status-badge.rejected {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+/* ===== 翻页 ===== */
+#fl-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+#fl-pagination .fl-page-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 13px;
+    border: 1px solid var(--fl-input-border);
+    border-radius: 6px;
+    background: var(--fl-input-bg);
+    color: var(--fl-text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+}
+
+#fl-pagination .fl-page-btn:hover {
+    border-color: var(--fl-option-btn-border);
+    color: var(--fl-option-btn-border);
+}
+
+#fl-pagination .fl-page-btn.active {
+    background: var(--fl-option-btn-active-bg);
+    border-color: var(--fl-option-btn-active-bg);
+    color: #fff;
+}
+
+#fl-pagination .fl-page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#fl-pagination .fl-page-dots {
+    color: var(--fl-text-muted);
+    font-size: 13px;
+    padding: 0 4px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+    #fl-status-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    #fl-status-section .fl-status-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #fl-status-section .fl-status-header-right {
+        margin-left: 0;
+        width: 100%;
+        flex-wrap: nowrap;
+    }
+    #fl-status-dropdown,
+    #fl-status-search-wrap {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    #fl-status-grid {
+        grid-template-columns: 1fr;
+    }
 }
 ```
 
@@ -417,47 +900,54 @@ document.getElementById('fl-f').addEventListener('submit', function(e) {
 在 `source/link/index.md` 的 `---` 下方添加：
 
 ```html
+> 你可以通过**评论**或**填写表单**两种方式来申请友链或更新信息，优先推荐使用**填写表单**的方式！
+
 {% raw %}
 <link rel="stylesheet" href="/css/link.css">
 
 <div id="fl-wrap">
   <h3>申请条件</h3>
   <p>请先确认满足以下条件：</p>
-  <label><input type="checkbox" id="fl-cb1"> 我已添加安小歪博客的友情链接</label>
+  <label><input type="checkbox" id="fl-cb1"> 我已添加 <strong>安小歪</strong> 的友情链接</label>
   <label><input type="checkbox" id="fl-cb2"> 我的网站现在可以在中国大陆区域正常访问</label>
   <label><input type="checkbox" id="fl-cb3"> 网站内容符合中国大陆法律法规</label>
+  <label><input type="checkbox" id="fl-cb4"> 我的链接主体为<strong>个人</strong>，网站类型为<strong>博客</strong></label>
+  <label><input type="checkbox" id="fl-cb5"> 网站域名不是 us.kg 等免费域名（github.io、gitee.io 除外）</label>
+  <div class="fl-hint fl-condition-hint">⚠ 请先勾选所有条件后再填写申请表单</div>
 
   <div id="fl-options" style="display:none">
     <div class="fl-hint">请选择操作</div>
-    <label><input type="checkbox" id="fl-cb-apply"> 申请友链</label>
-    <label><input type="checkbox" id="fl-cb-update"> 更新友链</label>
+    <div class="fl-option-btns">
+      <button class="fl-option-btn" id="fl-btn-apply">申请友链</button>
+      <button class="fl-option-btn" id="fl-btn-update">更新友链/信息</button>
+    </div>
 
     <div class="fl-form" id="fl-form-apply">
       <h3>申请友链</h3>
       <form id="fl-f-apply">
         <div class="fl-field">
           <label class="fl-label">站点名称 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-an" required placeholder="我的博客">
+          <input class="fl-input" id="fl-an" required placeholder="例如:安小歪">
         </div>
         <div class="fl-field">
           <label class="fl-label">站点地址 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-au" type="url" required placeholder="https://example.com">
+          <input class="fl-input" id="fl-au" type="url" required placeholder="网站链接">
         </div>
         <div class="fl-field">
           <label class="fl-label">站点描述</label>
-          <input class="fl-input" id="fl-ad" placeholder="一个关于技术和设计的博客">
+          <input class="fl-input" id="fl-ad" placeholder="例如:一个关于技术和设计的博客">
         </div>
         <div class="fl-field">
           <label class="fl-label">头像地址</label>
-          <input class="fl-input" id="fl-aa" type="url" placeholder="https://example.com/avatar.png">
+          <input class="fl-input" id="fl-aa" type="url" placeholder="头像链接">
         </div>
         <div class="fl-field">
           <label class="fl-label">站点截图</label>
-          <input class="fl-input" id="fl-as" type="url" placeholder="https://example.com/screenshot.png">
+          <input class="fl-input" id="fl-as" type="url" placeholder="站点截图链接">
         </div>
         <div class="fl-field">
           <label class="fl-label">邮箱 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-ae" type="email" required placeholder="you@example.com">
+          <input class="fl-input" id="fl-ae" type="email" required placeholder="联系邮箱">
         </div>
         <div class="fl-hint fl-sm">用于接收审核结果通知</div>
         <div class="fl-err" id="fl-err-apply"></div>
@@ -466,38 +956,38 @@ document.getElementById('fl-f').addEventListener('submit', function(e) {
     </div>
 
     <div class="fl-form" id="fl-form-update">
-      <h3>更新友链</h3>
+      <h3>更新友链/信息</h3>
       <form id="fl-f-update">
         <div class="fl-field">
           <label class="fl-label">原站点地址 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-uorig" type="url" required placeholder="https://原来的地址.com">
+          <input class="fl-input" id="fl-uorig" type="url" required placeholder="原来的网站地址">
         </div>
         <div class="fl-update-divider">
           <p>新的信息（只填需要修改的字段）</p>
         </div>
         <div class="fl-field">
           <label class="fl-label">新站点名称 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-un" required placeholder="我的博客">
+          <input class="fl-input" id="fl-un" required placeholder="例如:安小歪">
         </div>
         <div class="fl-field">
           <label class="fl-label">新站点地址 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-uu" type="url" required placeholder="https://example.com">
+          <input class="fl-input" id="fl-uu" type="url" required placeholder="网站链接">
         </div>
         <div class="fl-field">
           <label class="fl-label">新站点描述</label>
-          <input class="fl-input" id="fl-ud" placeholder="一个关于技术和设计的博客">
+          <input class="fl-input" id="fl-ud" placeholder="例如:一个关于技术和设计的博客">
         </div>
         <div class="fl-field">
           <label class="fl-label">新头像地址</label>
-          <input class="fl-input" id="fl-ua" type="url" placeholder="https://example.com/avatar.png">
+          <input class="fl-input" id="fl-ua" type="url" placeholder="头像链接">
         </div>
         <div class="fl-field">
           <label class="fl-label">新站点截图</label>
-          <input class="fl-input" id="fl-us" type="url" placeholder="https://example.com/screenshot.png">
+          <input class="fl-input" id="fl-us" type="url" placeholder="站点截图链接">
         </div>
         <div class="fl-field">
           <label class="fl-label">邮箱 <span class="fl-star">*</span></label>
-          <input class="fl-input" id="fl-ue" type="email" required placeholder="you@example.com">
+          <input class="fl-input" id="fl-ue" type="email" required placeholder="联系邮箱">
         </div>
         <div class="fl-hint fl-sm">用于接收审核结果通知</div>
         <div class="fl-err" id="fl-err-update"></div>
@@ -509,13 +999,13 @@ document.getElementById('fl-f').addEventListener('submit', function(e) {
 
 <script>
 var API = 'https://你的域名.vercel.app/api/submissions';
-var cb1=document.getElementById('fl-cb1'),cb2=document.getElementById('fl-cb2'),cb3=document.getElementById('fl-cb3'),opts=document.getElementById('fl-options');
+var cb1=document.getElementById('fl-cb1'),cb2=document.getElementById('fl-cb2'),cb3=document.getElementById('fl-cb3'),cb4=document.getElementById('fl-cb4'),cb5=document.getElementById('fl-cb5'),opts=document.getElementById('fl-options');
 
-function updateOpts(){opts.style.display=(cb1.checked&&cb2.checked&&cb3.checked)?'block':'none';opts.querySelectorAll('#fl-options input[type="checkbox"]').forEach(function(c){c.checked=false});document.querySelectorAll('#fl-options .fl-form').forEach(function(f){f.style.display='none'})}
-cb1.addEventListener('change',updateOpts);cb2.addEventListener('change',updateOpts);cb3.addEventListener('change',updateOpts);
+function updateOpts(){var allChecked=cb1.checked&&cb2.checked&&cb3.checked&&cb4.checked&&cb5.checked;opts.style.display=allChecked?'block':'none';document.querySelector('.fl-condition-hint').style.display=allChecked?'none':'block';document.querySelectorAll('#fl-options .fl-form').forEach(function(f){f.style.display='none'});document.querySelectorAll('.fl-option-btn').forEach(function(b){b.classList.remove('active')})}
+cb1.addEventListener('change',updateOpts);cb2.addEventListener('change',updateOpts);cb3.addEventListener('change',updateOpts);cb4.addEventListener('change',updateOpts);cb5.addEventListener('change',updateOpts);
 
-document.getElementById('fl-cb-apply').addEventListener('change',function(){document.getElementById('fl-form-apply').style.display=this.checked?'block':'none';if(this.checked)document.getElementById('fl-cb-update').checked=false,document.getElementById('fl-form-update').style.display='none'});
-document.getElementById('fl-cb-update').addEventListener('change',function(){document.getElementById('fl-form-update').style.display=this.checked?'block':'none';if(this.checked)document.getElementById('fl-cb-apply').checked=false,document.getElementById('fl-form-apply').style.display='none'});
+document.getElementById('fl-btn-apply').addEventListener('click',function(){document.getElementById('fl-form-apply').style.display='block';document.getElementById('fl-form-update').style.display='none';this.classList.add('active');document.getElementById('fl-btn-update').classList.remove('active')});
+document.getElementById('fl-btn-update').addEventListener('click',function(){document.getElementById('fl-form-update').style.display='block';document.getElementById('fl-form-apply').style.display='none';this.classList.add('active');document.getElementById('fl-btn-apply').classList.remove('active')});
 
 function submitForm(cbId,formId,getData){
   document.getElementById(formId).querySelector('form').addEventListener('submit',function(e){
@@ -527,13 +1017,187 @@ function submitForm(cbId,formId,getData){
   });
 }
 
-submitForm('fl-cb-apply','fl-form-apply',function(f){return{type:'apply',name:f.querySelector('#fl-an').value,url:f.querySelector('#fl-au').value,description:f.querySelector('#fl-ad').value,avatar:f.querySelector('#fl-aa').value,siteshot:f.querySelector('#fl-as').value,email:f.querySelector('#fl-ae').value}});
-submitForm('fl-cb-update','fl-form-update',function(f){return{type:'update',originalUrl:f.querySelector('#fl-uorig').value,name:f.querySelector('#fl-un').value,url:f.querySelector('#fl-uu').value,description:f.querySelector('#fl-ud').value,avatar:f.querySelector('#fl-ua').value,siteshot:f.querySelector('#fl-us').value,email:f.querySelector('#fl-ue').value}});
+submitForm('fl-form-apply','fl-form-apply',function(f){return{type:'apply',name:f.querySelector('#fl-an').value,url:f.querySelector('#fl-au').value,description:f.querySelector('#fl-ad').value,avatar:f.querySelector('#fl-aa').value,siteshot:f.querySelector('#fl-as').value,email:f.querySelector('#fl-ae').value}});
+submitForm('fl-form-update','fl-form-update',function(f){return{type:'update',originalUrl:f.querySelector('#fl-uorig').value,name:f.querySelector('#fl-un').value,url:f.querySelector('#fl-uu').value,description:f.querySelector('#fl-ud').value,avatar:f.querySelector('#fl-ua').value,siteshot:f.querySelector('#fl-us').value,email:f.querySelector('#fl-ue').value}});
 </script>
 {% endraw %}
+
+<div id="fl-status-section">
+  <div class="fl-status-header">
+    <div class="fl-status-title">
+      友链申请列表
+      <span class="fl-status-title-count" id="fl-status-count"></span>
+    </div>
+    <div class="fl-status-header-right">
+      <div class="fl-status-dropdown" id="fl-status-dropdown">
+        <button class="fl-status-dropdown-trigger">
+          <span id="fl-status-dropdown-label">全部状态</span>
+          <span class="fl-status-dropdown-arrow">▾</span>
+        </button>
+        <div class="fl-status-dropdown-menu">
+          <div class="fl-status-dropdown-item active" data-status="">全部状态</div>
+          <div class="fl-status-dropdown-item" data-status="pending">待审核</div>
+          <div class="fl-status-dropdown-item" data-status="approved">已通过</div>
+          <div class="fl-status-dropdown-item" data-status="rejected">已拒绝</div>
+        </div>
+      </div>
+      <div id="fl-status-search-wrap">
+        <span id="fl-status-search-icon">🔍</span>
+        <input id="fl-status-search" type="text" placeholder="搜索名称">
+      </div>
+    </div>
+  </div>
+  <div id="fl-status-grid">
+    <div class="fl-status-loading">加载中...</div>
+  </div>
+  <div id="fl-pagination"></div>
+</div>
+
+<script>
+(function(){
+var gridEl=document.getElementById('fl-status-grid');
+var countEl=document.getElementById('fl-status-count');
+var paginationEl=document.getElementById('fl-pagination');
+var searchEl=document.getElementById('fl-status-search');
+var dropdown=document.getElementById('fl-status-dropdown');
+var dropdownTrigger=document.querySelector('#fl-status-dropdown .fl-status-dropdown-trigger');
+var dropdownMenu=document.querySelector('#fl-status-dropdown .fl-status-dropdown-menu');
+var dropdownLabel=document.getElementById('fl-status-dropdown-label');
+var dropdownItems=document.querySelectorAll('#fl-status-dropdown .fl-status-dropdown-item');
+var currentStatus='';
+var currentPage=1;
+var pageSize=12;
+var searchTimer=null;
+
+dropdownTrigger.addEventListener('click',function(e){
+  e.stopPropagation();
+  dropdown.classList.toggle('open');
+});
+
+dropdownItems.forEach(function(item){
+  item.addEventListener('click',function(){
+    dropdown.classList.remove('open');
+    var status=this.getAttribute('data-status');
+    currentStatus=status;
+    dropdownLabel.textContent=this.textContent;
+    dropdownItems.forEach(function(i){i.classList.remove('active')});
+    this.classList.add('active');
+    currentPage=1;
+    render();
+  });
+});
+
+document.addEventListener('click',function(){
+  dropdown.classList.remove('open');
+});
+
+searchEl.addEventListener('input',function(){
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(function(){currentPage=1;render()},200);
+});
+
+function getStatusText(s){
+  if(s==='pending') return '待审核';
+  if(s==='approved') return '已通过';
+  if(s==='rejected') return '已拒绝';
+  return '';
+}
+
+function render(){
+  var keyword=searchEl.value.trim().toLowerCase();
+  var url=API+'?public=1';
+  if(currentStatus) url+='&status='+currentStatus;
+  if(keyword) url+='&search='+encodeURIComponent(keyword);
+  gridEl.innerHTML='<div class="fl-status-loading">加载中...</div>';
+  countEl.textContent='';
+  paginationEl.innerHTML='';
+  fetch(url).then(function(r){
+    if(!r.ok) throw new Error('请求失败');
+    return r.json();
+  }).then(function(data){
+    var list=data.submissions||[];
+    var total=list.length;
+    var totalPages=Math.ceil(total/pageSize)||1;
+    if(currentPage>totalPages) currentPage=totalPages;
+    var start=(currentPage-1)*pageSize;
+    var pageItems=list.slice(start,start+pageSize);
+    if(pageItems.length===0){
+      gridEl.innerHTML='<div class="fl-status-empty">暂无数据</div>';
+      countEl.textContent='共 0 条';
+      return;
+    }
+    countEl.textContent='共 '+total+' 条';
+    var html='';
+    pageItems.forEach(function(item){
+      var statusText=getStatusText(item.status);
+      var typeText=item.type==='update'?'更新':'新增';
+      html+='<div class="fl-status-item">'+
+        '<div class="fl-status-name">'+escapeHtml(item.name)+'</div>'+
+        '<div class="fl-status-desc">'+escapeHtml(item.description||'暂无描述')+'</div>'+
+        '<div class="fl-status-top-right">'+
+        '<span class="fl-status-badge '+item.status+'">'+statusText+'</span>'+
+        '<span class="fl-status-type">'+typeText+'</span>'+
+        '</div>'+
+        '</div>';
+    });
+    gridEl.innerHTML=html;
+    renderPagination(totalPages);
+  }).catch(function(){
+    gridEl.innerHTML='<div class="fl-status-error">加载失败，请稍后重试</div>';
+  });
+}
+
+function renderPagination(totalPages){
+  if(totalPages<=1){
+    paginationEl.innerHTML='';
+    return;
+  }
+  var prevDisabled=currentPage<=1?'disabled':'';
+  var nextDisabled=currentPage>=totalPages?'disabled':'';
+  var html='';
+  html+='<button class="fl-page-btn" onclick="window._goPage('+(currentPage-1)+')" '+prevDisabled+'>‹</button>';
+  var pages=[];
+  if(totalPages<=7){
+    for(var i=1;i<=totalPages;i++) pages.push(i);
+  }else{
+    pages.push(1);
+    if(currentPage>3) pages.push('...');
+    for(var i=Math.max(2,currentPage-1);i<=Math.min(totalPages-1,currentPage+1);i++) pages.push(i);
+    if(currentPage<totalPages-2) pages.push('...');
+    pages.push(totalPages);
+  }
+  pages.forEach(function(p){
+    if(p==='...'){
+      html+='<span class="fl-page-dots">…</span>';
+    }else{
+      html+='<button class="fl-page-btn'+(p===currentPage?' active':'')+'" onclick="window._goPage('+p+')">'+p+'</button>';
+    }
+  });
+  html+='<button class="fl-page-btn" onclick="window._goPage('+(currentPage+1)+')" '+nextDisabled+'>›</button>';
+  paginationEl.innerHTML=html;
+}
+
+window._goPage=function(page){
+  currentPage=page;
+  render();
+};
+
+function escapeHtml(str){
+  if(!str) return '';
+  var d=document.createElement('div');
+  d.textContent=str;
+  return d.innerHTML;
+}
+
+render();
+})();
+</script>
 ```
 
-效果：三个复选框全部勾选后，选择"申请友链"或"更新友链"，填写表单提交，等待管理员审核。
+> 效果：
+> - 5 个条件全部勾选后，显示"申请友链"和"更新友链/信息"两个按钮
+> - 选择操作后填写对应表单提交，等待管理员审核
+> - 页面底部展示友链申请状态列表，支持状态筛选、名称搜索、分页
 
 ## 管理后台
 

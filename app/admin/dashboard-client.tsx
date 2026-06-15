@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import toast from 'react-hot-toast'
 import SettingsPanel from '@/components/admin/SettingsPanel'
 import SubmissionTable from '@/components/admin/SubmissionTable'
@@ -324,11 +325,11 @@ export default function AdminDashboard() {
       <header style={{ backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
         <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href="/" className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center hover:shadow-md hover:scale-105 transition-all" style={{ boxShadow: '0 2px 8px rgba(99,102,241,0.25)' }}>
+            <Link href="/" className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center hover:shadow-md hover:scale-105 transition-all" style={{ boxShadow: '0 2px 8px rgba(99,102,241,0.25)' }}>
               <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-            </a>
+            </Link>
             <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>友链管理后台</span>
           </div>
           <div className="flex items-center gap-3">

@@ -40,6 +40,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ field })
   }
 
+  if (searchParams.get('public') === '1') {
+    try {
+      await dbConnect()
+      const filter: Record<string, unknown> = {}
+      const status = searchParams.get('status')
+      if (status) filter.status = status
+      const search = searchParams.get('search')
+      if (search) filter.name = { $regex: search, $options: 'i' }
+      const submissions = await Submission.find(filter, 'name description status type')
+        .sort({ createdAt: -1 }).lean()
+      return NextResponse.json({ submissions }, {
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      })
+    } catch {
+      return NextResponse.json(
+        { error: '获取提交列表失败' },
+        { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
+  }
+
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ error: '未授权' }, { status: 401 })
